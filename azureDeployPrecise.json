@@ -1,0 +1,182 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vmCount": {
+            "type": "int"
+        },
+        "subnet": {
+            "type": "string"
+        },
+        "omsWorkspace": {
+            "type": "string"
+        },
+        "automationUrl": {
+           "type": "string"
+        },
+        "automationKey": {
+            "type": "securestring"
+        },
+        "sasToken": {
+            "type": "securestring"
+        }
+    },
+    "variables": {
+        "templateLocation": "https://armdeployment.blob.core.windows.net/templates/2.0.0/",
+        "apiVersion": "2016-09-01",
+        "automationSolution": "[concat('AzureAutomation', '(', parameters('omsWorkspace'), ')')]",
+        "availabilitySet": "[concat(variables('namePrefix'), '-as')]",
+        "storageAccount": "[toLower(concat(variables('namePrefix'), 'sa'))]",
+        "namePrefix": "[resourceGroup().tags.NamingPrefix]",
+        "vmRole": "IS"
+    },
+    "resources": [
+        {
+            "apiVersion": "2015-11-01-preview",
+            "type": "Microsoft.OperationalInsights/workspaces",
+            "name": "[parameters('omsWorkspace')]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "sku": {
+                    "name": "free"
+                }
+            }
+        },
+        {
+            "apiVersion": "2015-11-01-preview",
+            "type": "Microsoft.OperationsManagement/solutions",
+            "name": "[variables('automationSolution')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('omsWorkspace'))]"
+            ],
+            "plan": {
+                "name": "[variables('automationSolution')]",
+                "publisher": "Microsoft",
+                "product": "OMSGallery/AzureAutomation",
+                "promotionCode": ""
+            },
+            "properties": {
+                "workspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('omsWorkspace'))]",
+                "containedResources": []
+            }
+        },
+        {
+            "apiVersion": "2015-06-15",
+            "type": "Microsoft.Compute/availabilitySets",
+            "name": "[variables('availabilitySet')]",
+            "location": "[resourceGroup().location]",
+            "properties": {}
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "name": "[concat(deployment().name, '_', variables('storageAccount'))]",
+            "apiVersion": "[variables('apiVersion')]",
+            "dependsOn": [],
+            "properties": {
+                "templateLink": { "uri": "[concat(variables('templateLocation'), 'storage-account.json')]" },
+                "parameters": {
+                    "name": { "value": "[variables('storageAccount')]" },
+                    "sku": { "value": "Standard_LRS" }
+                },
+                "mode": "incremental"
+            }
+        },
+        {
+            "apiVersion": "[variables('apiVersion')]",
+            "type": "Microsoft.Resources/deployments",
+            "name": "[concat(deployment().name, '_', variables('namePrefix'), variables('vmRole'), padLeft(copyIndex(1), 3, '0'))]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Compute/availabilitySets', variables('availabilitySet'))]",
+                "[concat(deployment().name, '_', variables('storageAccount'))]"
+            ],
+            "copy": {
+                "name": "vm-loop",
+                "count": "[parameters('vmCount')]"
+            },
+            "properties": {
+                "templateLink": { "uri": "[concat(variables('templateLocation'), 'virtual-machine.json')]" },
+                "parameters": {
+                    "description": { "value": "Hybrid Worker" },
+                    "nameRole": { "value": "[variables('vmRole')]" },
+                    "nameSequence": { "value": "[copyIndex(1)]" },
+                    "size": { "value": "Standard_A1" },
+                    "subnet": { "value": "[parameters('subnet')]" },
+                    "storageAccount": { "value": "[variables('storageAccount')]" },
+                    "operatingSystem": { "value": "Windows" },
+                    "image": { "value": "MicrosoftWindowsServer/WindowsServer/2016-Datacenter" },
+                    "availabilitySet": { "value": "[variables('availabilitySet')]" },
+                    "joinDomain": { "value": false }
+                },
+                "mode": "incremental"
+            }
+        },
+        {
+            "apiVersion": "2016-03-30",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('namePrefix'), variables('vmRole'), padLeft(copyIndex(1), 3, '0'), '/MicrosoftMonitoringAgent')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('omsWorkspace'))]",
+                "[resourceId('Microsoft.OperationsManagement/solutions', variables('automationSolution'))]",
+                "[concat(deployment().name, '_', variables('namePrefix'), variables('vmRole'), padLeft(copyIndex(1), 3, '0'))]"
+            ],
+            "copy": {
+                "name": "oms-loop",
+                "count": "[parameters('vmCount')]"
+            },
+            "properties": {
+                "publisher": "Microsoft.EnterpriseCloud.Monitoring",
+                "type": "MicrosoftMonitoringAgent",
+                "typeHandlerVersion": "1.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "workspaceId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('omsWorkspace')), '2015-03-20').customerId]"
+                },
+                "protectedSettings": {
+                    "workspaceKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces/', parameters('omsWorkspace')), '2015-03-20').primarySharedKey]"
+                }
+            }
+        },
+    {
+            "apiVersion": "2016-03-30",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('namePrefix'), variables('vmRole'), padLeft(copyIndex(1), 3, '0'), '/DSC')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": ["resourceId('Microsoft.Compute/virtualMachines/extensions', concat(variables('namePrefix'), variables('vmRole'), padLeft(copyIndex(1), 3, '0'), 'MicrosoftMonitoringAgent'))"
+            ],
+            "copy": {
+                "name": "dsc-loop",
+                "count": "[parameters('vmCount')]"
+            },
+            "properties": {
+                "publisher": "Microsoft.Powershell",
+                "type": "DSC",
+                "typeHandlerVersion": "2.20",
+                "settings": {
+                    "wmfVersion": "latest",
+                    "configuration": {
+                        "url": "[concat('https://', variables('storageAccount'), '.blob.core.windows.net/setup/dsc.zip')]",
+                        "script": "configuration.ps1",
+                        "function": "HybridWorker"
+                    },
+                    "configurationArguments": {
+                        "HybridWorkerGroup": "default"
+                    },
+                    "privacy": {
+                        "dataCollection": "disable"
+                    }
+                },
+                "protectedSettings": {
+                    "configurationUrlSasToken": "[parameters('sasToken')]",
+                    "configurationArguments": {
+                        "AutomationCredential": {
+                            "userName": "[parameters('automationUrl')]",
+                            "password": "[parameters('automationKey')]"
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
