@@ -156,7 +156,7 @@
                 "settings": {
                     "wmfVersion": "latest",
                     "configuration": {
-                        "url": "[concat('https://', variables('storageAccount'), '.blob.core.windows.net/setup/dsc.zip')]",
+                        "url": "[concat('https://github.com/tnhamu0813/Automation/blob/master/dsc1.zip')]",
                         "script": "configuration.ps1",
                         "function": "HybridWorker"
                     },
