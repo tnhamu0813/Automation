@@ -1,0 +1,21 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "accountName": {
+            "value": "AutomationAccount"
+        },
+        "credentialName": {
+            "value": "tatAutoCred"
+        },
+        "userName": {
+            "value": "tatenda"
+        },
+        "password": {
+            "value": "Tatendanhamu12"
+        },
+        "jobID": {
+            "value": "f4b3323e-7ffe-422b-93b1-2333d7fe193f"
+        }
+    }
+}
