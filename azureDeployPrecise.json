@@ -22,7 +22,7 @@
         }
     },
     "variables": {
-        "templateLocation": "https://armdeployment.blob.core.windows.net/templates/2.0.0/",
+        "templateLocation": "https://github.com/tnhamu0813/Automation/",
         "apiVersion": "2016-09-01",
         "automationSolution": "[concat('AzureAutomation', '(', parameters('omsWorkspace'), ')')]",
         "availabilitySet": "[concat(variables('namePrefix'), '-as')]",
