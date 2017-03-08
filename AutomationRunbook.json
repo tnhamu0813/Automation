@@ -4,7 +4,6 @@
     "parameters": {
         "accountName": {
             "type": "string",
-            "value": "AccPOCautomationAccount",
             "metadata": {
                 "description": "The name of the Azure Automation account to deploy to."
             }
@@ -12,28 +11,24 @@
         "credentialName": {
             "type": "string",
             "defaultValue": "DefaultAzureCredential",
-            "value": "AccPOCautoCred",
             "metadata": {
                 "description": "DefaultAzureCredential is the name of the Automation credential used in this runbook. This credential allows you to authenticate to Azure. "
             }
         },
         "userName": {
             "type": "string",
-            "value": "tatenda",
             "metadata": {
                 "description": "The username for the Azure Automation credential."
             }
         },
         "password": {
             "type": "securestring",
-            "value": "Tatendanhamu12",
             "metadata": {
                 "description": "The password for the Azure Automation credential."
             }
         },
         "jobId": {
             "type": "string",
-            "value": "e9cb8299-c635-486e-8f01-f456b03ee962",
             "metadata": {
                 "description": "The GUID for the runbook job to be started."
             }
